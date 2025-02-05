@@ -2,8 +2,7 @@ local M = {}
 
 function M.open_assistant()
 	local buf = vim.api.nvim_create_buf(false, true)
-
-	vim.api.nvim_open_win(buf, true, {
+	local win = vim.api.nvim_open_win(buf, true, {
 		relative = "editor",
 		width = 80,
 		height = 20,
@@ -13,28 +12,30 @@ function M.open_assistant()
 		border = "single",
 	})
 
-	vim.api.nvim_set_option_value("buftype", "prompt", { buf = buf })
-	vim.api.nvim_set_option_value("filetype", "deepseek_r1", { buf = buf })
+	vim.api.nvim_buf_set_option(buf, "buftype", "prompt")
+	vim.api.nvim_buf_set_option(buf, "filetype", "deepseek_r1")
+	vim.fn.prompt_setprompt(buf, "User: ")
 
-	-- Prompt for user input
-	vim.fn.prompt_setprompt(buf, "DeepSeek R1: ")
 	vim.fn.prompt_setcallback(buf, function(input)
 		if input == "" then
 			return
 		end
 
-		-- Format input with "User:" prefix
-		local formatted_input = "User: " .. input .. "\nDeepSeek R1:"
+		-- Append the user's input to the buffer.
+		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { "User: " .. input })
 
-		-- Send the input to the DeepSeek R1 assistant
-		local response = M.send_to_assistant(formatted_input)
+		-- Build a prompt payload that provides context for the assistant.
+		local prompt_payload = "User: " .. input .. "\nDeepSeek R1:"
+		local response = M.send_to_assistant(prompt_payload)
 
-		-- Display the response in the buffer
-		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { response })
+		-- Append the assistant's response.
+		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { "DeepSeek R1: " .. response })
+
+		-- Reset prompt to "User: " for the next input.
+		vim.fn.prompt_setprompt(buf, "User: ")
 	end)
 
-	-- Enter insert mode
-	vim.api.nvim_command("startinsert")
+	vim.cmd("startinsert")
 end
 
 function M.send_to_assistant(input)
@@ -45,7 +46,7 @@ function M.send_to_assistant(input)
 	end
 
 	local payload = {
-		model = config.ollama_model or "deepseek-r1",
+		model = config.ollama_model or "deepseek-r1", -- Ensured consistent model naming
 		prompt = input,
 		stream = false,
 	}
@@ -72,7 +73,7 @@ function M.send_to_assistant(input)
 		return "Error parsing JSON. Raw response: " .. result
 	end
 
-	-- Adjusting based on potential API response structure
+	-- Return the assistant's reply from one of the potential response keys.
 	return json.response or json.text or json.data or "Error: No response from the API."
 end
 
