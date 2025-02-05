@@ -23,8 +23,11 @@ function M.open_assistant()
 			return
 		end
 
+		-- Format input with "User:" prefix
+		local formatted_input = "User: " .. input .. "\nDeepSeek R1:"
+
 		-- Send the input to the DeepSeek R1 assistant
-		local response = M.send_to_assistant(input)
+		local response = M.send_to_assistant(formatted_input)
 
 		-- Display the response in the buffer
 		vim.api.nvim_buf_set_lines(buf, -1, -1, false, { response })
@@ -42,7 +45,7 @@ function M.send_to_assistant(input)
 	end
 
 	local payload = {
-		model = config.ollama_model or "deepseek-r1:1.5b",
+		model = config.ollama_model or "deepseek-r1",
 		prompt = input,
 		stream = false,
 	}
